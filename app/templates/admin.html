@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+
+{% block main %}
+<div class="container mt-3">
+    <div class="row mb-5">
+        <div class="col">
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="action" class="form-label">Action</label>
+                    <select id="action" class="form-select" name="action" required>
+                        <option value="" disabled selected hidden>Choose action</option>
+                        <option value="delete-all">Delete all</option>
+                    </select>
+                </div>
+                <button id="submit" class="btn btn-danger" type="submit">Perform</button>
+            </form>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <div class="progress" role="progressbar">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script src="https://cdn.socket.io/4.8.0/socket.io.min.js" integrity="sha384-OoIbkvzsFFQAG88r+IqMAjyOtYDPGO0cqK5HF5Uosdy/zUEGySeAzytENMDynREd" crossorigin="anonymous"></script>
+
+<script>
+    var socket = io();
+
+    var input = document.querySelector('#action');
+    var submitButton = document.querySelector('#submit');
+    var progressBar = document.querySelector('.progress-bar');
+
+    socket.on('admin_progress', function(data) {
+        input.disabled = true;
+        submitButton.disabled = true;
+
+        console.log('process', data);
+
+        let percentage = Math.round((data.current / data.total) * 100);
+
+        progressBar.style.width = percentage + '%';
+    })
+</script>
+{% endblock %}

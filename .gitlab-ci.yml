@@ -1,0 +1,21 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  DOCKER_TAG: "$CI_COMMIT_REF_SLUG"
+
+build-app-docker-image:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  variables:
+    DOCKER_CONFIG: /kaniko/.docker/ # Path for Docker configuration
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+  script:
+    - /kaniko/executor --context=. --dockerfile=Dockerfile --destination="$CI_REGISTRY_IMAGE/vienna-waste-mngmt:$DOCKER_TAG"
+  only:
+    - main

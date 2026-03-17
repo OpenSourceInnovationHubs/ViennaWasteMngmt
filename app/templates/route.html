@@ -1,0 +1,168 @@
+{% extends "base.html" %} {% block title %}Route{% endblock %} {% block head %}
+{{ super() }}
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+  crossorigin=""
+/>
+
+<style>
+  body {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  main {
+    flex: 1;
+  }
+
+  #main-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  #map-container {
+    flex: 1;
+  }
+  #map {
+    height: 100%;
+    width: 100%;
+  }
+</style>
+{% endblock %} {% block main %}
+<div id="main-container" class="container-fluid">
+  <div class="row mb-3">
+    <label for="districts" class="col-2 col-form-label">District</label>
+    <div class="col-10">
+      <select id="districts" class="form-select">
+        <option selected disabled>Select</option>
+        <option value="1010">1. Innere Stadt</option>
+        <option value="1020">2. Leopoldstadt</option>
+        <option value="1030">3. Landstraße</option>
+        <option value="1040">4. Wieden</option>
+        <option value="1050">5. Margareten</option>
+        <option value="1060">6. Mariahilf</option>
+        <option value="1070">7. Neubau</option>
+        <option value="1080">8. Josefstadt</option>
+        <option value="1090">9. Alsergrund</option>
+        <option value="1100" disabled>10. Favoriten</option>
+        <option value="1110" disabled>11. Simmering</option>
+        <option value="1120" disabled>12. Meidling</option>
+        <option value="1130" disabled>13. Hietzing</option>
+        <option value="1140" disabled>14. Penzing</option>
+        <option value="1150" disabled>15. Rudolfsheim-Fünfhaus</option>
+        <option value="1160" disabled>16. Ottakring</option>
+        <option value="1170" disabled>17. Hernals</option>
+        <option value="1180" disabled>18. Währing</option>
+        <option value="1190" disabled>19. Döbling</option>
+        <option value="1200">20. Brigittenau</option>
+        <option value="1210" disabled>21. Floridsdorf</option>
+        <option value="1220" disabled>22. Donaustadt</option>
+        <option value="1230" disabled>23. Liesing</option>
+      </select>
+    </div>
+  </div>
+  <div class="row mb-3">
+    <label for="storedWasteKind" class="col-2 col-form-label">Waste Kind</label>
+    <div class="col-10">
+      <select id="storedWasteKind" class="form-select">
+        <option value="plastic">Plastic</option>
+        <option value="glass">Glass</option>
+        <option value="paper" selected>Paper</option>
+        <option value="organic">Organic</option>
+      </select>
+    </div>
+  </div>
+  <div class="row">
+    <label for="fillingLevel" class="col-2 col-form-label"
+      >Filling Percent</label
+    >
+    <div class="col-10">
+      <input
+        id="fillingLevel"
+        class="form-range"
+        type="range"
+        min="0"
+        max="1"
+        value="1"
+        step="0.1"
+      />
+    </div>
+  </div>
+  <div id="map-container" class="row">
+    <div class="col">
+      <div id="map"></div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block script %} {{ super() }}
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""
+></script>
+
+<script>
+  var districts = document.querySelector("#districts");
+  var fillingLevel = document.querySelector("#fillingLevel");
+  var storedWasteKind = document.querySelector("#storedWasteKind");
+
+  var map = L.map("map");
+
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    minZoom: 14,
+    attribution:
+      '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(map);
+
+  var routeGroup = L.layerGroup().addTo(map);
+
+  function loadMap() {
+    districts.disabled = true;
+    fillingLevel.disabled = true;
+    storedWasteKind.disabled = true;
+
+    fetch(
+      `http://localhost:5000/api/district?postalcode=${districts.value}&fillinglevel=${fillingLevel.value}&storedWasteKind=${storedWasteKind.value}`,
+    )
+      .then((res) => res.json())
+      .then((json) => {
+        districts.disabled = false;
+        fillingLevel.disabled = false;
+        storedWasteKind.disabled = false;
+
+        routeGroup.clearLayers();
+
+        const route = json.trips[0].geometry;
+
+        color = "blue";
+        if (storedWasteKind.value == "paper") {
+          color = "red";
+        } else if (storedWasteKind.value == "plastic") {
+          color = "yellow";
+        } else if (storedWasteKind.value == "glass") {
+          color = "green";
+        } else if (storedWasteKind.value == "organic") {
+          color = "brown";
+        }
+
+        const polyline = L.geoJSON(route, {
+          style: {
+            color: color,
+            weight: 4,
+          },
+        }).addTo(routeGroup);
+
+        map.fitBounds(polyline.getBounds());
+      });
+  }
+
+  map.setView([48.21, 16.38], 14);
+
+  districts.addEventListener("change", () => loadMap());
+  fillingLevel.addEventListener("change", () => loadMap());
+  storedWasteKind.addEventListener("change", () => loadMap());
+</script>
+{% endblock %}

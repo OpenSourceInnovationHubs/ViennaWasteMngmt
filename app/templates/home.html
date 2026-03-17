@@ -1,0 +1,190 @@
+{% extends "base.html" %} {% block title %}Home{% endblock %} {% block head %}
+{{ super() }}
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+  crossorigin=""
+/>
+
+<style>
+  .emoji-marker {
+    font-size: 40;
+    line-height: 1;
+    text-align: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .tooltip-header {
+    text-transform: capitalize;
+    font-weight: bold;
+  }
+  body {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  main {
+    flex: 1;
+  }
+
+  #main-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  #map-container {
+    flex: 1;
+  }
+  #map {
+    height: 100%;
+    width: 100%;
+  }
+</style>
+{% endblock %} {% block main %}
+<div id="main-container" class="container-fluid">
+  <div class="row mb-1">
+    <div class="col">
+      <div class="form-check">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          value="plastic"
+          id="plastic"
+          checked
+        />
+        <label class="form-check-label" for="plastic">Plastic</label>
+      </div>
+    </div>
+    <div class="col">
+      <div class="form-check">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          value="glass"
+          id="glass"
+        />
+        <label class="form-check-label" for="glass">Glass</label>
+      </div>
+    </div>
+    <div class="col">
+      <div class="form-check">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          value="paper"
+          id="paper"
+        />
+        <label class="form-check-label" for="paper">Paper</label>
+      </div>
+    </div>
+    <div class="col">
+      <div class="form-check">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          value="organic"
+          id="organic"
+        />
+        <label class="form-check-label" for="organic">Organic</label>
+      </div>
+    </div>
+  </div>
+  <div id="map-container" class="row">
+    <div class="col">
+      <div id="map"></div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block script %} {{ super() }}
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""
+></script>
+
+<script>
+  var plastic = document.querySelector("#plastic");
+  var glass = document.querySelector("#glass");
+  var paper = document.querySelector("#paper");
+  var organic = document.querySelector("#organic");
+
+  var map = L.map("map");
+
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    minZoom: 14,
+    attribution:
+      '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(map);
+
+  var containerGroup = L.layerGroup().addTo(map);
+  var containerIcons = {
+    yellow: "🟡",
+    green: "🟢",
+    red: "🔴",
+    brown: "🟤",
+  };
+  var containerOffset = {
+    yellow: [0.00005, 0],
+    green: [0, 0.00005],
+    red: [-0.00005, 0],
+    brown: [0, -0.00005],
+  };
+
+  function loadMap() {
+    var filter = [];
+    if (plastic.checked) filter.push('"plastic"');
+    if (glass.checked) filter.push('"glass"');
+    if (paper.checked) filter.push('"paper"');
+    if (organic.checked) filter.push('"organic"');
+    if (filter.length == 0) filter.push('""');
+
+    var bounds = map.getBounds();
+    var polygon = `[[${bounds.getSouthWest().lng},${bounds.getSouthWest().lat}],[${bounds.getNorthEast().lng},${bounds.getSouthWest().lat}],[${bounds.getNorthEast().lng},${bounds.getNorthEast().lat}],[${bounds.getSouthWest().lng},${bounds.getNorthEast().lat}],[${bounds.getSouthWest().lng},${bounds.getSouthWest().lat}]]`;
+
+    fetch(
+      `http://localhost:5000/api/polygon?polygon=${polygon}&filter=${filter.join(",")}`,
+    )
+      .then((res) => res.json())
+      .then((json) => {
+        containerGroup.clearLayers();
+
+        json.forEach(function (sdm) {
+          coordinates = sdm.location.value.coordinates.reverse();
+          offset = containerOffset[sdm.binColor.value];
+          coordinates = [
+            coordinates[0] + offset[0],
+            coordinates[1] + offset[1],
+          ];
+
+          var icon = L.divIcon({
+            className: "emoji-marker",
+            html: containerIcons[sdm.binColor.value],
+            iconSize: [40, 40],
+            iconAnchor: [20, 20],
+          });
+          var marker = L.marker(coordinates, { icon: icon });
+          marker.bindPopup(
+            `
+                        <span class="tooltip-header">${sdm.storedWasteKind.value} ${sdm.category.value}</span>
+                        <p>${sdm.address.value.streetAddress}<br>${sdm.address.value.postalCode}</p>
+                        <a href="${sdm.seeAlso.value}" target="_blank">more info</a>
+                        `,
+          );
+          containerGroup.addLayer(marker);
+        });
+      });
+  }
+
+  map.on("moveend", loadMap);
+  //map.on('load', loadMap);
+
+  map.setView([48.21, 16.38], 14);
+
+  plastic.addEventListener("change", () => loadMap());
+  glass.addEventListener("change", () => loadMap());
+  paper.addEventListener("change", () => loadMap());
+  organic.addEventListener("change", () => loadMap());
+</script>
+{% endblock %}

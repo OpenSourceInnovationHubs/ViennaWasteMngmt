@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Upload{% endblock %}
+
+{% block main %}
+<div class="container mt-3">
+    <div class="row mb-5">
+        <div class="col">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="file" class="form-label">File</label>
+                    <input id="file" class="form-control" type="file" accept="application/json" name="file" required>
+                </div>
+                <button id="submit" class="btn btn-primary" type="submit">Upload</button>
+            </form>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <div class="progress" role="progressbar">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script src="https://cdn.socket.io/4.8.0/socket.io.min.js" integrity="sha384-OoIbkvzsFFQAG88r+IqMAjyOtYDPGO0cqK5HF5Uosdy/zUEGySeAzytENMDynREd" crossorigin="anonymous"></script>
+
+<script>
+    var socket = io();
+
+    var input = document.querySelector('#file');
+    var submitButton = document.querySelector('#submit');
+    var progressBar = document.querySelector('.progress-bar');
+
+    socket.on('file_progress', function(data) {
+        input.disabled = true;
+        submitButton.disabled = true;
+
+        console.log('process', data);
+
+        let percentage = Math.round((data.current / data.total) * 100);
+
+        progressBar.style.width = percentage + '%';
+    })
+</script>
+{% endblock %}
